@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Benchmark Babylon.js</title>
+  <style>
+    *,
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    #webgl {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      outline: none;
+      border: none;
+    }
+  </style>
+
+  <script src="./babylonjs/babylon.js"></script>
+  <script src="./babylonjs/babylonjs.loaders.min.js"></script>
+</head>
+
+<body>
+  <canvas id="webgl" touch-action="none"></canvas>
+
+  <script>
+    BABYLON.DracoCompression.Configuration = {
+      decoder: {
+        wasmUrl: "/babylonjs/draco/draco_wasm_wrapper_gltf.js",
+        wasmBinaryUrl: "/babylonjs/draco/draco_decoder_gltf.wasm",
+        fallbackUrl: "/babylonjs/draco/draco_decoder_gltf.js",
+      },
+    };
+    const canvas = document.getElementById("webgl");
+    const engine = new BABYLON.Engine(canvas, true);
+    engine.doNotHandleContextLost = true;
+    engine.enableOfflineSupport = false;
+
+    const scene = new BABYLON.Scene(engine);
+
+    // change default background color to white
+    scene.clearColor = BABYLON.Color3.White();
+
+    // scene optimizations
+    scene.fogMode = BABYLON.Scene.FOGMODE_NONE;
+    scene.freezeActiveMeshes();
+    scene.skipPointerMovePicking = true;
+    scene.performancePriority = BABYLON.ScenePerformancePriority.Intermediate;
+
+    const camera = new BABYLON.ArcRotateCamera(
+      "camera",
+      -Math.PI * 0.5,
+      Math.PI * 0.5,
+      50,
+      new BABYLON.Vector3(0, 5, 0),
+      scene
+    );
+    camera.position = new BABYLON.Vector3(10, 10, 30);
+    camera.attachControl(canvas, true);
+
+    // set z clipping range
+    camera.minZ = 0;
+    camera.maxZ = 100;
+
+    // reduce zoom sensitivity
+    camera.wheelPrecision = 30;
+
+    // set camera radius
+    camera.lowerRadiusLimit = 3;
+    camera.upperRadiusLimit = 50;
+
+    const light = new BABYLON.HemisphericLight(
+      "light",
+      new BABYLON.Vector3.Up()
+    );
+    light.intensity = 1;
+
+    const cubeTexture = new BABYLON.CubeTexture("./assets/envMap/", scene, [
+      "px.jpg",
+      "py.jpg",
+      "pz.jpg",
+      "nx.jpg",
+      "ny.jpg",
+      "nz.jpg",
+    ]);
+    scene.createDefaultSkybox(cubeTexture, false, 1000);
+
+    BABYLON.SceneLoader.ImportMesh(
+      "",
+      "./assets/models/",
+      "modern_preview_for_unity.glb",
+      scene,
+      (meshes) => {
+        meshes.slice(1).forEach((mesh) => {
+          mesh.receiveShadows = true;
+
+          // if (mesh.name.includes("Pannel") && mesh.name.includes("1")) {
+          //   mesh.material = new BABYLON.StandardMaterial(
+          //     mesh.name + "_Material",
+          //     scene
+          //   );
+          //   mesh.material.diffuseColor = BABYLON.Color3.White();
+          //   mesh.material.backFaceCulling = false;
+          //   mesh.visibility = 0.7;
+          // }
+
+          // switch (mesh.name) {
+          //   case "CeilingTop":
+          //     mesh.material = new BABYLON.StandardMaterial(
+          //       "CeilingTopMaterial",
+          //       scene
+          //     );
+          //     mesh.material.diffuseTexture = new BABYLON.Texture(
+          //       "./assets/textures/emissive.ktx2",
+          //       scene
+          //     );
+          //     mesh.material.emissiveColor = new BABYLON.Color3(1, 1, 1);
+          //     break;
+          //   case "Floor":
+          //     mesh.material = new BABYLON.StandardMaterial(
+          //       "FloorMaterial",
+          //       scene
+          //     );
+          //     mesh.material.diffuseTexture = new BABYLON.Texture(
+          //       "./assets/textures/marble.ktx2",
+          //       scene
+          //     );
+          //     break;
+          //   case "Sandbox":
+          //     mesh.material = new BABYLON.StandardMaterial(
+          //       "SandboxMaterial",
+          //       scene
+          //     );
+          //     mesh.material.diffuseTexture = new BABYLON.Texture(
+          //       "./assets/textures/cementLarge.ktx2",
+          //       scene
+          //     );
+          //     break;
+          // }
+
+          // optimize performance
+          mesh.freezeWorldMatrix();
+          mesh.material?.freeze();
+          mesh.doNotSyncBoundingInfo = true;
+          mesh.isPickable = false;
+        });
+      },
+      undefined,
+      undefined,
+      ".glb"
+    );
+
+    BABYLON.SceneLoader.ImportMesh(
+      "",
+      "./assets/models/",
+      "blueSofa.glb",
+      scene,
+      (meshes) => {
+        const sofa2 = meshes[1].createInstance("sofa2");
+        sofa2.rotation = new BABYLON.Vector3(0, Math.PI / 2, 0);
+
+        // optimize performance
+        meshes[1].freezeWorldMatrix();
+        meshes[1].material?.freeze();
+        meshes[1].doNotSyncBoundingInfo = true;
+        meshes[1].isPickable = false;
+      },
+      undefined,
+      undefined,
+      ".glb"
+    );
+
+    BABYLON.SceneLoader.ImportMesh(
+      "",
+      "./assets/models/",
+      "lowTable.glb",
+      scene,
+      (meshes) => {
+        // optimize performance
+        meshes[1].freezeWorldMatrix();
+        meshes[1].material?.freeze();
+        meshes[1].doNotSyncBoundingInfo = true;
+        meshes[1].isPickable = false;
+      },
+      undefined,
+      undefined,
+      ".glb"
+    );
+
+    engine.runRenderLoop(() => {
+      if (scene.activeCamera) scene.render();
+    });
+
+    // Watch for browser/canvas resize events
+    window.addEventListener("resize", () => {
+      engine.resize();
+    });
+  </script>
+</body>
+
+</html>
